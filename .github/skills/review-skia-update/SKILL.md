@@ -111,7 +111,10 @@ Copy the validated JSON to `output/ai/` for collection.
 pwsh .github/skills/review-skia-update/scripts/persist-skia-review.ps1 {output_dir}/{pr_number}.json
 ```
 
-This copies the JSON to `output/ai/repos/mono-skia/ai-review/` mirroring the data-cache structure.
+This copies the JSON to `output/ai/repos/mono-skia/ai-review/` and generates an HTML report
+alongside it. The HTML is a self-contained file (Bootstrap 5 + diff2html) suitable for attaching
+to a PR/issue or uploading as a gist.
+
 To push to the data-cache branch separately: `pwsh scripts/persist-to-cache.ps1`
 
 ### 3. Present summary
@@ -125,6 +128,14 @@ Interop Integrity:  PASS/REVIEW_REQUIRED (Na/Nc)
 DEPS Audit:         PASS/REVIEW_REQUIRED (Na/Nc)
 Companion PR:       N findings
 Risk:               HIGH/MEDIUM/LOW
+```
+
+After presenting the summary, ask the user if they'd like to open the HTML report in their browser
+to review the full contents (diffs, recommendations, dependency table, etc.). If yes:
+
+```bash
+open output/ai/repos/mono-skia/ai-review/{pr_number}.html  # macOS
+# or: xdg-open ... (Linux) / start ... (Windows)
 ```
 
 ---
