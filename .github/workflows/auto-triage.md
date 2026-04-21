@@ -1,14 +1,44 @@
 ---
 description: "Triage a SkiaSharp issue: classify, label, and update the backlog project board."
 on:
+  schedule: every 30m
   workflow_dispatch:
     inputs:
       issue_number:
-        description: "Issue number to triage"
-        required: true
+        description: "Issue number to triage (leave blank for auto-select)"
+        required: false
         type: string
+  skip-if-no-match: "is:issue is:open -label:triage/triaged"
   skip-bots: [github-actions, copilot, dependabot]
   roles: all
+  permissions:
+    issues: read
+  steps:
+    - name: Select issue to triage
+      id: find-issue
+      env:
+        INPUT_ISSUE: ${{ github.event.inputs.issue_number }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        if [ -n "$INPUT_ISSUE" ]; then
+          echo "issue_number=$INPUT_ISSUE" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        CUTOFF=$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ)
+        ISSUE=$(gh issue list --repo "$GITHUB_REPOSITORY" \
+          --state open \
+          --search "-label:triage/triaged created:<${CUTOFF} sort:comments-desc" \
+          --json number --limit 1 --jq '.[0].number')
+        if [ -z "$ISSUE" ] || [ "$ISSUE" = "null" ]; then
+          echo "::notice::No untriaged issues older than 1 hour"
+          exit 1
+        fi
+        echo "issue_number=$ISSUE" >> "$GITHUB_OUTPUT"
+jobs:
+  pre-activation:
+    outputs:
+      issue_number: ${{ steps.find-issue.outputs.issue_number }}
+if: needs.pre_activation.outputs.find-issue_result == 'success'
 tools:
   github:
     toolsets: [issues]
@@ -43,15 +73,15 @@ safe-outputs:
 
 # Auto-Triage SkiaSharp Issue
 
-Triage issue **#${{ github.event.inputs.issue_number }}** using the issue-triage skill, then apply labels and update the SkiaSharp Backlog project board.
+Triage issue **#${{ needs.pre_activation.outputs.issue_number }}** using the issue-triage skill, then apply labels and update the SkiaSharp Backlog project board.
 
 ## Step 1 — Run the issue-triage skill
 
-Read and follow the instructions in `.agents/skills/issue-triage/SKILL.md` to triage issue #${{ github.event.inputs.issue_number }}.
+Read and follow the instructions in `.agents/skills/issue-triage/SKILL.md` to triage issue #${{ needs.pre_activation.outputs.issue_number }}.
 
 Complete all phases (Setup → Investigate → Analyze → Workarounds → Validate → Persist).
 
-After Phase 6 completes, the triage JSON will be at `issue-triage-workspace/${{ github.event.inputs.issue_number }}.json`.
+After Phase 6 completes, the triage JSON will be at `issue-triage-workspace/${{ needs.pre_activation.outputs.issue_number }}.json`.
 
 ## Step 2 — Apply labels from classification
 
@@ -83,6 +113,6 @@ Read the triage JSON and update the issue in the **SkiaSharp Backlog** project (
 
 The `update-project` safe output auto-creates missing SINGLE_SELECT options — no need to pre-create values.
 
-Use `content_type: "issue"` and `content_number: ${{ github.event.inputs.issue_number }}` to identify the item.
+Use `content_type: "issue"` and issue number `${{ needs.pre_activation.outputs.issue_number }}` to identify the item.
 
 Only include fields that have non-null values in the triage JSON. Omit any field where the source value is null or absent.
