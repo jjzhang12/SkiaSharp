@@ -340,6 +340,72 @@ namespace SkiaSharp
 			return res;
 		}
 
+		// Variable fonts
+
+		public int VariationDesignParameterCount =>
+			SkiaApi.sk_typeface_get_variation_design_parameters (Handle, null, 0);
+
+		public SKFontVariationAxis[] VariationDesignParameters
+		{
+			get {
+				var count = VariationDesignParameterCount;
+				if (count <= 0)
+					return Array.Empty<SKFontVariationAxis> ();
+
+				var axes = new SKFontVariationAxis[count];
+				fixed (SKFontVariationAxis* ptr = axes) {
+					SkiaApi.sk_typeface_get_variation_design_parameters (Handle, ptr, count);
+				}
+				return axes;
+			}
+		}
+
+		public int GetVariationDesignParameters (Span<SKFontVariationAxis> axes)
+		{
+			fixed (SKFontVariationAxis* ptr = axes) {
+				return SkiaApi.sk_typeface_get_variation_design_parameters (Handle, ptr, axes.Length);
+			}
+		}
+
+		public int VariationDesignPositionCount =>
+			SkiaApi.sk_typeface_get_variation_design_position (Handle, null, 0);
+
+		public SKFontVariationPositionCoordinate[] VariationDesignPosition
+		{
+			get {
+				var count = VariationDesignPositionCount;
+				if (count <= 0)
+					return Array.Empty<SKFontVariationPositionCoordinate> ();
+
+				var coords = new SKFontVariationPositionCoordinate[count];
+				fixed (SKFontVariationPositionCoordinate* ptr = coords) {
+					SkiaApi.sk_typeface_get_variation_design_position (Handle, ptr, count);
+				}
+				return coords;
+			}
+		}
+
+		public int GetVariationDesignPosition (Span<SKFontVariationPositionCoordinate> coordinates)
+		{
+			fixed (SKFontVariationPositionCoordinate* ptr = coordinates) {
+				return SkiaApi.sk_typeface_get_variation_design_position (Handle, ptr, coordinates.Length);
+			}
+		}
+
+		public SKTypeface Clone (ReadOnlySpan<SKFontVariationPositionCoordinate> position)
+		{
+			fixed (SKFontVariationPositionCoordinate* ptr = position) {
+				return GetObject (SkiaApi.sk_typeface_clone_with_arguments (Handle, ptr, position.Length, 0));
+			}
+		}
+
+		public SKTypeface Clone (SKFontArguments args)
+		{
+			fixed (SKFontVariationPositionCoordinate* ptr = args.VariationDesignPosition) {
+				return GetObject (SkiaApi.sk_typeface_clone_with_arguments (Handle, ptr, args.VariationDesignPosition.Length, args.CollectionIndex));
+			}
+		}
+
 		//
 
 		internal static SKTypeface GetObject (IntPtr handle) =>

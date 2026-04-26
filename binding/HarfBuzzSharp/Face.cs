@@ -85,6 +85,101 @@ namespace HarfBuzzSharp
 
 		public void MakeImmutable () => HarfBuzzApi.hb_face_make_immutable (Handle);
 
+		// Variable font support
+
+		public bool HasVariationData => HarfBuzzApi.hb_ot_var_has_data (Handle);
+
+		public int VariationAxisCount =>
+			(int)HarfBuzzApi.hb_ot_var_get_axis_count (Handle);
+
+		public OpenTypeVarAxisInfo[] VariationAxisInfos
+		{
+			get {
+				var count = HarfBuzzApi.hb_ot_var_get_axis_count (Handle);
+				if (count == 0)
+					return Array.Empty<OpenTypeVarAxisInfo> ();
+
+				var axes = new OpenTypeVarAxisInfo[(int)count];
+				fixed (OpenTypeVarAxisInfo* ptr = axes) {
+					HarfBuzzApi.hb_ot_var_get_axis_infos (Handle, 0, &count, ptr);
+				}
+				return axes;
+			}
+		}
+
+		public int GetVariationAxisInfos (Span<OpenTypeVarAxisInfo> axes)
+		{
+			uint count = (uint)axes.Length;
+			fixed (OpenTypeVarAxisInfo* ptr = axes) {
+				HarfBuzzApi.hb_ot_var_get_axis_infos (Handle, 0, &count, ptr);
+			}
+			return (int)count;
+		}
+
+		public bool TryFindVariationAxis (Tag tag, out OpenTypeVarAxisInfo axisInfo)
+		{
+			axisInfo = default;
+			fixed (OpenTypeVarAxisInfo* ptr = &axisInfo) {
+				return HarfBuzzApi.hb_ot_var_find_axis_info (Handle, tag, ptr);
+			}
+		}
+
+		public int NamedInstanceCount =>
+			(int)HarfBuzzApi.hb_ot_var_get_named_instance_count (Handle);
+
+		public OpenTypeNameId GetNamedInstanceSubfamilyNameId (int instanceIndex)
+		{
+			if (instanceIndex < 0)
+				throw new ArgumentOutOfRangeException (nameof (instanceIndex));
+			return HarfBuzzApi.hb_ot_var_named_instance_get_subfamily_name_id (Handle, (uint)instanceIndex);
+		}
+
+		public OpenTypeNameId GetNamedInstancePostScriptNameId (int instanceIndex)
+		{
+			if (instanceIndex < 0)
+				throw new ArgumentOutOfRangeException (nameof (instanceIndex));
+			return HarfBuzzApi.hb_ot_var_named_instance_get_postscript_name_id (Handle, (uint)instanceIndex);
+		}
+
+		public int GetNamedInstanceDesignCoordsCount (int instanceIndex)
+		{
+			if (instanceIndex < 0)
+				throw new ArgumentOutOfRangeException (nameof (instanceIndex));
+
+			// Return value is the total number of design coordinates
+			return (int)HarfBuzzApi.hb_ot_var_named_instance_get_design_coords (Handle, (uint)instanceIndex, null, null);
+		}
+
+		public float[] GetNamedInstanceDesignCoords (int instanceIndex)
+		{
+			if (instanceIndex < 0)
+				throw new ArgumentOutOfRangeException (nameof (instanceIndex));
+
+			// Return value is the total number of design coordinates
+			var totalCoords = (int)HarfBuzzApi.hb_ot_var_named_instance_get_design_coords (Handle, (uint)instanceIndex, null, null);
+			if (totalCoords == 0)
+				return Array.Empty<float> ();
+
+			uint coordsLength = (uint)totalCoords;
+			var coords = new float[totalCoords];
+			fixed (float* ptr = coords) {
+				HarfBuzzApi.hb_ot_var_named_instance_get_design_coords (Handle, (uint)instanceIndex, &coordsLength, ptr);
+			}
+			return coords;
+		}
+
+		public int GetNamedInstanceDesignCoords (int instanceIndex, Span<float> coords)
+		{
+			if (instanceIndex < 0)
+				throw new ArgumentOutOfRangeException (nameof (instanceIndex));
+
+			uint coordsLength = (uint)coords.Length;
+			fixed (float* ptr = coords) {
+				HarfBuzzApi.hb_ot_var_named_instance_get_design_coords (Handle, (uint)instanceIndex, &coordsLength, ptr);
+			}
+			return (int)coordsLength;
+		}
+
 		protected override void Dispose (bool disposing) =>
 			base.Dispose (disposing);
 
