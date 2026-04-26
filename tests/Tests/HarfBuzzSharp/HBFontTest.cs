@@ -17,6 +17,14 @@ namespace HarfBuzzSharp.Tests
 			return (face, font);
 		}
 
+		private (Face face, Font font) CreateMultiAxisFontPair ()
+		{
+			using var blob = Blob.FromFile (Path.Combine (PathToFonts, "InterVariable.ttf"));
+			var face = new Face (blob, 0);
+			var font = new Font (face);
+			return (face, font);
+		}
+
 		// US2: Set Font Variation Values
 
 		[SkippableFact]
@@ -42,7 +50,7 @@ namespace HarfBuzzSharp.Tests
 			using (face)
 			using (font) {
 				var axes = face.VariationAxisInfos;
-				if (axes.Length < 1) return;
+				Assert.NotEmpty (axes);
 
 				// Set all axes to their min values
 				var variations = new Variation[axes.Length];
@@ -50,6 +58,10 @@ namespace HarfBuzzSharp.Tests
 					variations[i] = new Variation { Tag = axes[i].Tag, Value = axes[i].MinValue };
 				}
 				font.SetVariations (variations);
+
+				// Verify the coords were applied
+				var coords = font.VariationCoordsNormalized;
+				Assert.Equal (axes.Length, coords.Length);
 			}
 		}
 
@@ -142,7 +154,7 @@ namespace HarfBuzzSharp.Tests
 		}
 
 		[SkippableFact]
-		public void SpanGetVariationCoordsNormalizedReturnsTotalLengthWhenBufferSmall ()
+		public void SpanGetVariationCoordsNormalizedReturnsWrittenCountWhenBufferSmall ()
 		{
 			var (face, font) = CreateVariableFontPair ();
 			using (face)
@@ -154,10 +166,40 @@ namespace HarfBuzzSharp.Tests
 				coords[0] = 4096;
 				font.SetVariationCoordsNormalized (coords);
 
-				// Pass an empty buffer — should return total length without crashing
+				// Pass an empty buffer — should return 0 (nothing written)
 				var emptyBuffer = new int[0];
-				var totalLength = font.GetVariationCoordsNormalized (emptyBuffer);
-				Assert.Equal (axisCount, totalLength);
+				var written = font.GetVariationCoordsNormalized (emptyBuffer);
+				Assert.Equal (0, written);
+
+				// Pass a full buffer — should return axis count
+				var fullBuffer = new int[axisCount];
+				var fullWritten = font.GetVariationCoordsNormalized (fullBuffer);
+				Assert.Equal (axisCount, fullWritten);
+
+				// Pass an oversized buffer — should still return axis count
+				var overBuffer = new int[axisCount + 5];
+				var overWritten = font.GetVariationCoordsNormalized (overBuffer);
+				Assert.Equal (axisCount, overWritten);
+			}
+		}
+
+		[SkippableFact]
+		public void SpanGetVariationCoordsNormalizedWithUndersizedBuffer ()
+		{
+			var (face, font) = CreateMultiAxisFontPair ();
+			using (face)
+			using (font) {
+				var axisCount = face.VariationAxisCount;
+				Assert.True (axisCount >= 2, $"Need multi-axis font, got {axisCount}");
+
+				var coords = new int[axisCount];
+				coords[0] = 4096;
+				font.SetVariationCoordsNormalized (coords);
+
+				// Pass a buffer with 1 slot when there are multiple axes
+				var buf1 = new int[1];
+				var written = font.GetVariationCoordsNormalized (buf1);
+				Assert.Equal (1, written);
 			}
 		}
 

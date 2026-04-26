@@ -252,6 +252,19 @@ namespace SkiaSharp.Tests
 		}
 
 		[SkippableFact]
+		public void ContainsGlyphsWithByteSpanDoesNotStackOverflow ()
+		{
+			using var typeface = SKTypeface.Default;
+			var text = System.Text.Encoding.UTF8.GetBytes ("Hello");
+			ReadOnlySpan<byte> span = text;
+
+			// This overload had infinite recursion (called itself instead of GetFont())
+			// It should throw StackOverflowException if still broken, or work correctly if fixed
+			var result = typeface.ContainsGlyphs (span, SKTextEncoding.Utf8);
+			Assert.True (result);
+		}
+
+		[SkippableFact]
 		public unsafe void ReleaseDataWasInvokedOnlyAfterTheTypefaceWasFinished()
 		{
 			SkipOnPlatform(IsMac, "macOS does not release the data when the typeface is disposed");
@@ -813,6 +826,63 @@ namespace SkiaSharp.Tests
 		}
 
 		[SkippableFact]
+		public void SpanGetVariationDesignParametersWithUndersizedBuffer ()
+		{
+			// InterVariable has multiple axes (wght, opsz) — tests undersized buffer behavior
+			using var typeface = SKTypeface.FromFile (Path.Combine (PathToFonts, "InterVariable.ttf"));
+			Assert.NotNull (typeface);
+
+			var total = typeface.VariationDesignParameterCount;
+			Assert.True (total >= 2, $"Need a multi-axis font, got {total} axes");
+
+			// span=0: nothing to write, returns 0
+			var buf0 = new SKFontVariationAxis[0];
+			Assert.Equal (0, typeface.GetVariationDesignParameters (buf0));
+
+			// span=1 (undersized): should fill 1 and return 1
+			var buf1 = new SKFontVariationAxis[1];
+			var ret1 = typeface.GetVariationDesignParameters (buf1);
+			Assert.Equal (1, ret1);
+			Assert.NotEqual (default, buf1[0].Tag);
+
+			// span=exact: should fill all and return total
+			var bufExact = new SKFontVariationAxis[total];
+			Assert.Equal (total, typeface.GetVariationDesignParameters (bufExact));
+
+			// The partial fill should match the first element of the full fill
+			Assert.Equal (bufExact[0].Tag, buf1[0].Tag);
+			Assert.Equal (bufExact[0].Min, buf1[0].Min);
+		}
+
+		[SkippableFact]
+		public void SpanGetVariationDesignPositionWithUndersizedBuffer ()
+		{
+			using var typeface = SKTypeface.FromFile (Path.Combine (PathToFonts, "InterVariable.ttf"));
+			Assert.NotNull (typeface);
+
+			var total = typeface.VariationDesignPositionCount;
+			Assert.True (total >= 2, $"Need a multi-axis font, got {total} axes");
+
+			// span=0: nothing to write, returns 0
+			var buf0 = new SKFontVariationPositionCoordinate[0];
+			Assert.Equal (0, typeface.GetVariationDesignPosition (buf0));
+
+			// span=1 (undersized): should fill 1 and return 1
+			var buf1 = new SKFontVariationPositionCoordinate[1];
+			var ret1 = typeface.GetVariationDesignPosition (buf1);
+			Assert.Equal (1, ret1);
+			Assert.NotEqual (default, buf1[0].Axis);
+
+			// span=exact: should fill all
+			var bufExact = new SKFontVariationPositionCoordinate[total];
+			Assert.Equal (total, typeface.GetVariationDesignPosition (bufExact));
+
+			// Partial fill matches first element of full fill
+			Assert.Equal (bufExact[0].Axis, buf1[0].Axis);
+			Assert.Equal (bufExact[0].Value, buf1[0].Value);
+		}
+
+		[SkippableFact]
 		public void SpanVariationDesignParametersEmptyForStaticFont ()
 		{
 			using var typeface = SKTypeface.FromFile (Path.Combine (PathToFonts, "content-font.ttf"));
@@ -820,7 +890,7 @@ namespace SkiaSharp.Tests
 
 			var spanBuffer = new SKFontVariationAxis[4];
 			var written = typeface.GetVariationDesignParameters (spanBuffer);
-			Assert.True (written <= 0);
+			Assert.True (written <= 0, $"Static font should return 0 or -1, got {written}");
 		}
 
 		[SkippableFact]
@@ -831,7 +901,35 @@ namespace SkiaSharp.Tests
 
 			var spanBuffer = new SKFontVariationPositionCoordinate[4];
 			var written = typeface.GetVariationDesignPosition (spanBuffer);
-			Assert.True (written <= 0);
+			Assert.True (written <= 0, $"Static font should return 0 or -1, got {written}");
+		}
+
+		[SkippableFact]
+		public void SpanGetVariationDesignParametersWithOversizedBuffer ()
+		{
+			using var typeface = SKTypeface.FromFile (Path.Combine (PathToFonts, "Distortable.ttf"));
+			Assert.NotNull (typeface);
+
+			var total = typeface.VariationDesignParameterCount;
+			Assert.True (total > 0);
+
+			var spanBuffer = new SKFontVariationAxis[total + 5];
+			var written = typeface.GetVariationDesignParameters (spanBuffer);
+			Assert.Equal (total, written);
+		}
+
+		[SkippableFact]
+		public void SpanGetVariationDesignPositionWithOversizedBuffer ()
+		{
+			using var typeface = SKTypeface.FromFile (Path.Combine (PathToFonts, "Distortable.ttf"));
+			Assert.NotNull (typeface);
+
+			var total = typeface.VariationDesignPositionCount;
+			Assert.True (total > 0);
+
+			var spanBuffer = new SKFontVariationPositionCoordinate[total + 5];
+			var written = typeface.GetVariationDesignPosition (spanBuffer);
+			Assert.Equal (total, written);
 		}
 
 		[SkippableFact]
@@ -855,7 +953,44 @@ namespace SkiaSharp.Tests
 			Assert.Equal (axes[0].Min, clonedPosition[0].Value);
 		}
 
-		// Exact axis value tests — verify interop produces correct values
+		[SkippableFact]
+		public void CloneWithPaletteOverride ()
+		{
+			using var typeface = SKTypeface.FromFile (Path.Combine (PathToFonts, "test_glyphs-COLRv1.ttf"));
+			Assert.NotNull (typeface);
+
+			var overrides = new SKFontPaletteOverride[] {
+				new SKFontPaletteOverride { Index = 0, Color = 0xFFFF0000 }
+			};
+
+			using var cloned = typeface.Clone (new SKFontArguments {
+				PaletteOverrides = overrides,
+			});
+			Assert.NotNull (cloned);
+		}
+
+		[SkippableFact]
+		public void CloneWithDifferentPaletteIndex ()
+		{
+			using var typeface = SKTypeface.FromFile (Path.Combine (PathToFonts, "test_glyphs-COLRv1.ttf"));
+			Assert.NotNull (typeface);
+
+			using var clone0 = typeface.Clone (0);
+			using var clone1 = typeface.Clone (1);
+			Assert.NotNull (clone0);
+			Assert.NotNull (clone1);
+		}
+
+		[SkippableFact]
+		public void CloneWithNegativePaletteIndexThrows ()
+		{
+			using var typeface = SKTypeface.FromFile (Path.Combine (PathToFonts, "test_glyphs-COLRv1.ttf"));
+			Assert.NotNull (typeface);
+
+			Assert.Throws<ArgumentOutOfRangeException> (() => typeface.Clone (-1));
+		}
+
+// Exact axis value tests — verify interop produces correct values
 
 		[SkippableFact]
 		public void DistortableFontHasExactAxisValues ()
