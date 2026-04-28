@@ -112,3 +112,8 @@ The file should follow the template structure exactly — title, blockquote head
 then the polished sections (Highlights, Breaking Changes, New Features, etc.).
 
 No fence markers or placeholders needed — the workflow overwrites the whole file each run.
+
+## Step 6 — Create or update the pull request
+
+Always use `dev/upcoming-release-notes` as the branch name when creating the pull request.
+This ensures each workflow run updates the **same PR** instead of opening a new one.
