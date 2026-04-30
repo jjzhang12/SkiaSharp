@@ -1,7 +1,7 @@
 ---
 description: "Triage a SkiaSharp issue: classify, label, and update the backlog project board."
 on:
-  schedule: every 30m
+  schedule: every 10m
   workflow_dispatch:
     inputs:
       issue_number:
@@ -39,6 +39,13 @@ jobs:
     outputs:
       issue_number: ${{ steps.find-issue.outputs.issue_number }}
 if: needs.pre_activation.outputs.find-issue_result == 'success'
+steps:
+  - name: Redirect step summary into agent-writable directory
+    run: |
+      mkdir -p /tmp/gh-aw/agent
+      touch /tmp/gh-aw/agent/step-summary.md
+      rm -f /tmp/gh-aw/agent-step-summary.md
+      ln -s /tmp/gh-aw/agent/step-summary.md /tmp/gh-aw/agent-step-summary.md
 tools:
   github:
     toolsets: [issues]
@@ -101,9 +108,25 @@ Read the triage JSON and update the issue in the **SkiaSharp Backlog** project (
 | Repro Quality | `evidence.bugSignals.reproQuality` | SINGLE_SELECT: complete, partial, none. Skip if null. |
 | Error Type | `evidence.bugSignals.errorType` | SINGLE_SELECT: crash, exception, wrong-output, etc. Skip if null. |
 | Triage Summary | `analysis.summary` | TEXT: root cause hypothesis. Truncate to 1024 chars. |
+| Suggested Repro Platform | `output.actionability.suggestedReproPlatform` | SINGLE_SELECT: linux, macos, windows. Skip if null. |
 
 The `update-project` safe output auto-creates missing SINGLE_SELECT options — no need to pre-create values.
 
 Use `content_type: "issue"` and issue number `${{ needs.pre_activation.outputs.issue_number }}` to identify the item.
 
 Only include fields that have non-null values in the triage JSON. Omit any field where the source value is null or absent.
+
+## Step 4 — Upload triage reports and write step summary
+
+Copy the three triage output files into `/tmp/gh-aw/agent/` so they are included in the workflow's `agent` artifact, then write the Markdown report to the step summary so it's visible on the Actions run page without downloading artifacts.
+
+```bash
+cp output/ai/repos/mono-SkiaSharp/ai-triage/${{ needs.pre_activation.outputs.issue_number }}.json /tmp/gh-aw/agent/
+cp output/ai/repos/mono-SkiaSharp/ai-triage/${{ needs.pre_activation.outputs.issue_number }}.md /tmp/gh-aw/agent/
+cp output/ai/repos/mono-SkiaSharp/ai-triage/${{ needs.pre_activation.outputs.issue_number }}.html /tmp/gh-aw/agent/
+cat output/ai/repos/mono-SkiaSharp/ai-triage/${{ needs.pre_activation.outputs.issue_number }}.md >> /tmp/gh-aw/agent/step-summary.md
+```
+
+**IMPORTANT:** Write to the literal path `/tmp/gh-aw/agent/step-summary.md` — this file is symlinked to the step summary. Do NOT use `$GITHUB_STEP_SUMMARY` as it resolves to an inaccessible path.
+
+All three files MUST be copied and the markdown MUST be appended to `/tmp/gh-aw/agent/step-summary.md`. Verify they exist before finishing.
