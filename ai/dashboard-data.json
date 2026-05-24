@@ -1,0 +1,107 @@
+{
+  "generatedAt": "2026-07-21",
+  "adoption": {
+    "asOf": "2026-07-21",
+    "sourceUrl": "https://www.nuget.org/packages/SkiaSharp",
+    "primary": {
+      "id": "SkiaSharp",
+      "total": 299070342,
+      "currentGa": {
+        "version": "4.150.1",
+        "downloads": 55863
+      },
+      "lines": [
+        {
+          "line": "4.151",
+          "stable": 0,
+          "previews": 1935,
+          "stableVersion": null
+        },
+        {
+          "line": "4.150",
+          "stable": 152073,
+          "previews": 2415,
+          "stableVersion": "4.150.1"
+        },
+        {
+          "line": "4.148",
+          "stable": 307469,
+          "previews": 1031,
+          "stableVersion": "4.148.0"
+        },
+        {
+          "line": "4.147",
+          "stable": 0,
+          "previews": 11731,
+          "stableVersion": null
+        },
+        {
+          "line": "3.119",
+          "stable": 38536567,
+          "previews": 858946,
+          "stableVersion": "3.119.4"
+        }
+      ]
+    }
+  },
+  "cadence": {
+    "asOf": "2026-07-21",
+    "scheduleUrl": "https://chromiumdash.appspot.com/schedule",
+    "prsUrl": "https://github.com/mono/SkiaSharp/pulls?q=is%3Apr+milestone+in%3Atitle",
+    "caption": "AI opens, tests, and lands the sync PR; humans review the API.",
+    "milestones": [
+      {
+        "milestone": 117,
+        "branchPoint": "2023-08-08",
+        "prNumber": 3047,
+        "prOpened": "",
+        "prMerged": "2024-10-28",
+        "stableDate": "2023-09-12",
+        "firstPreview": null,
+        "note": ""
+      },
+      {
+        "milestone": 118,
+        "branchPoint": "2023-09-05",
+        "prNumber": 3048,
+        "prOpened": "",
+        "prMerged": "2024-11-04",
+        "stableDate": "2023-10-10",
+        "firstPreview": null,
+        "note": ""
+      },
+      {
+        "milestone": 119,
+        "branchPoint": "2023-10-02",
+        "prNumber": 3062,
+        "prOpened": "",
+        "prMerged": "2025-03-03",
+        "stableDate": "2023-10-31",
+        "firstPreview": null,
+        "note": ""
+      }
+    ]
+  },
+  "cost": {
+    "asOf": "2026-07-02",
+    "sourceUrl": "https://github.com/mono/SkiaSharp/tree/main/.github/workflows",
+    "note": "Representative per-run figures from the gh-aw run logs (“Effective tokens” and “Turns”). No-op runs excluded.",
+    "workflows": [
+      {
+        "name": "Skia upstream sync",
+        "cadence": "every 6 hours",
+        "tokens": 54068620,
+        "turns": 95,
+        "workflowUrl": "https://github.com/mono/SkiaSharp/blob/main/.github/workflows/auto-skia-sync.md"
+      },
+      {
+        "name": "API docs writer",
+        "cadence": "daily",
+        "tokens": 27746000,
+        "turns": 56,
+        "workflowUrl": "https://github.com/mono/SkiaSharp-API-docs/blob/main/.github/workflows/auto-api-docs-writer.md"
+      }
+    ]
+  },
+  "footerUrl": "https://github.com/mono/SkiaSharp/tree/main/.github/workflows"
+}
