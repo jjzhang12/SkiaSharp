@@ -308,7 +308,7 @@
         "type": "git",
         "git": {
           "repositoryUrl": "https://github.com/mono/skia.git",
-          "commitHash": "cc43af052d3d98e605bee4ddc98671dafded1c57"
+          "commitHash": "149e3e4fc360b887a1cb70432c4ddeda36bf2c5b"
         }
       }
     },
